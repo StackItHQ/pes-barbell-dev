@@ -1,4 +1,4 @@
-.env
-superjoin_credentials.json
-token.json
-env.py
+/.env
+/superjoin_credentials.json
+/token.json
+/env.py
