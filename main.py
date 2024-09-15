@@ -50,9 +50,8 @@ def fetch_db_data():
 def insert_to_database(column1):
     conn = connect_to_database()
     cursor = conn.cursor()
-    query = "INSERT INTO test (column1, timeOfUpdate) VALUES (%s, %s)"
-    timestamp = datetime.now()
-    cursor.execute(query, (column1, timestamp))
+    query = "INSERT INTO test (column1) VALUES (%s)"
+    cursor.execute(query, (column1,))
     conn.commit()
     row_id = cursor.lastrowid  # Get the auto-incremented ID
     conn.close()
@@ -68,15 +67,17 @@ def delete_from_database(row_id):
     conn.close()
 
 # Insert into Google Sheets
-def insert_to_google_sheets(row):
+def insert_to_google_sheets(column1, row_id):
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-    formatted_row = [str(item) if isinstance(item, datetime) else item for item in row]
+    formatted_row = [column1, row_id]
+    logging.info(f"Inserting into Google Sheets: {formatted_row}")
     sheet.append_row(formatted_row)
 
 # Delete from Google Sheets
 def delete_from_google_sheets(row_index):
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-    sheet.delete_row(row_index)
+    logging.info(f"Deleting from Google Sheets: Row {row_index}")
+    sheet.delete_rows(row_index)
 
 # Sync logic
 def sync_sheets_and_db(prev_sheet_data, prev_db_data):
@@ -86,29 +87,29 @@ def sync_sheets_and_db(prev_sheet_data, prev_db_data):
     # Detect and sync changes from Google Sheets to DB
     for row in current_sheet_data:
         if row not in prev_sheet_data:  # New row detected in Sheets
-            column1 = row[2]
+            column1 = row[0]
             row_id = insert_to_database(column1)
             logging.info(f"New row in Google Sheets detected: {row}. Inserted into DB with ID {row_id}")
-            # Update the Google Sheet with the new ID and timestamp
+            # Update the Google Sheet with the new ID
             sheet = client.open_by_key(SPREADSHEET_ID).sheet1
             cell = sheet.find(column1)  # Find the row with the new column1 value
             if cell:
                 row_number = cell.row
-                sheet.update_cell(row_number, 3, row_id)  # Update the ID column
+                sheet.update_cell(row_number, 2, row_id)  # Update the ID column
 
     for prev_row in prev_sheet_data:
         if prev_row not in current_sheet_data:  # Row deleted from Sheets
-            row_id = prev_row[2]  # Assuming ID is in column 3
+            row_id = prev_row[1]  # Assuming ID is in column 2
             delete_from_database(row_id)
             logging.info(f"Row deleted from Google Sheets: {prev_row}. Deleted from DB")
 
     # Detect and sync changes from DB to Google Sheets
     for row in current_db_data:
         if row not in prev_db_data:  # New row detected in DB
-            column1 = row[1]
-            timestamp = row[2]
-            row_to_add = [column1, timestamp, row[0]]  # ID is the first element
-            insert_to_google_sheets(row_to_add)
+            column1 = row[0]
+            row_id = row[1]
+            row_to_add = [column1, row_id]
+            insert_to_google_sheets(column1, row_id)
             logging.info(f"New row in DB detected: {row}. Added to Google Sheets")
 
     for prev_row in prev_db_data:
