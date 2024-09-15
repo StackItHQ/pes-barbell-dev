@@ -111,7 +111,7 @@ def sync_sheets_and_db(prev_sheet_data, prev_db_data):
                 if cell:
                     row_number = cell.row
                     sheet.update_cell(row_number, 2, new_row_id)
-                dbChange = True
+                    dbChange = True
 
     # Handle deletions from Google Sheets to DB
     if not dbChange:
