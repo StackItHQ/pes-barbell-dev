@@ -1,138 +1,51 @@
-# import os
-# import gspread
-# from oauth2client.client import OAuth2WebServerFlow
-# from oauth2client.file import Storage
-# from oauth2client import tools
-# import mysql.connector
-# import logging
-# from dotenv import load_dotenv
-
-# # Load environment variables from .env file
-# load_dotenv()
-
-# # OAuth2 client configuration from environment variables
-# CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
-# CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
-# SCOPE = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-# REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'
-# TOKEN_FILE = 'token.json'
-# SERVICE_ACCOUNT_FILE = 'superjoin-435614-8fddc078511b.json'
-
-# # Set up logging
-# logging.basicConfig(level=logging.INFO)
-
-# def get_google_sheets_service():
-#     flow = OAuth2WebServerFlow(client_id=CLIENT_ID,
-#                                client_secret=CLIENT_SECRET,
-#                                scope=SCOPE,
-#                                redirect_uri=REDIRECT_URI)
-
-#     storage = Storage(TOKEN_FILE)
-#     credentials = storage.get()
-
-#     if credentials is None or credentials.invalid:
-#         credentials = tools.run_flow(flow, storage)
-    
-#     client = gspread.authorize(credentials)
-#     return client
-
-# def fetch_google_sheets_data():
-#     try:
-#         client = get_google_sheets_service()
-#         sheet = client.open_by_key(os.getenv('SPREADSHEET_ID')).sheet1
-#         data = sheet.get_all_values()
-#         logging.info("Fetched data from Google Sheets: %s", data)
-#         return data
-#     except Exception as e:
-#         logging.error("Error fetching data from Google Sheets: %s", e)
-#         raise
-
-# def connect_to_database():
-#     try:
-#         conn = mysql.connector.connect(
-#             host="localhost",
-#             user=os.getenv('DB_USER'),
-#             password=os.getenv('DB_PASSWORD'),
-#             database="superjoin"
-#         )
-#         logging.info("Successfully connected to the database.")
-#         return conn
-#     except mysql.connector.Error as err:
-#         logging.error("Error connecting to the database: %s", err)
-#         raise
-
-# def insert_data_to_db(data):
-#     try:
-#         conn = connect_to_database()
-#         cursor = conn.cursor()
-#         query = "INSERT INTO test (column1) VALUES (%s)"
-#         print(data)
-#         for row in data:
-#             if len(row) == 2:
-#                 values = (row[1],)
-#                 logging.info("Inserting values: %s", values)
-#                 cursor.execute(query, values)
-        
-#         conn.commit()
-#         logging.info("Data successfully inserted into the database.")
-#     except mysql.connector.Error as err:
-#         logging.error("Error inserting data into database: %s", err)
-#         conn.rollback()
-#     finally:
-#         if conn.is_connected():
-#             cursor.close()
-#             conn.close()
-#             logging.info("Database connection closed.")
-
-# def main():
-#     try:
-#         google_sheets_data = fetch_google_sheets_data()
-#         insert_data_to_db(google_sheets_data)
-#     except Exception as e:
-#         logging.error("An error occurred during the main process: %s", e)
-
-# if __name__ == "__main__":
-#     main()
-
 import os
 import gspread
-from google.oauth2 import service_account
 import mysql.connector
 import logging
+from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
+from datetime import datetime
 
 # Load environment variables from .env file
 load_dotenv()
 
+# Google Sheets credentials
 SERVICE_ACCOUNT_FILE = 'superjoin-435614-8fddc078511b.json'
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
+
+# Database credentials
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
+# Google Sheets client setup
 def get_google_sheets_service():
-    credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    credentials = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     client = gspread.authorize(credentials)
     return client
 
+# Fetch data from Google Sheets
 def fetch_google_sheets_data():
     try:
         client = get_google_sheets_service()
-        sheet = client.open_by_key(os.getenv('SPREADSHEET_ID')).sheet1
-        data = sheet.get_all_values()
+        sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+        data = sheet.get_all_values()  # Get all values from the sheet
         logging.info("Fetched data from Google Sheets: %s", data)
         return data
     except Exception as e:
         logging.error("Error fetching data from Google Sheets: %s", e)
         raise
 
+# Connect to MySQL database
 def connect_to_database():
     try:
         conn = mysql.connector.connect(
             host="localhost",
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
+            user=DB_USER,
+            password=DB_PASSWORD,
             database="superjoin"
         )
         logging.info("Successfully connected to the database.")
@@ -141,20 +54,32 @@ def connect_to_database():
         logging.error("Error connecting to the database: %s", err)
         raise
 
-def insert_data_to_db(data):
+# Fetch data from the database
+def fetch_database_data():
     try:
         conn = connect_to_database()
         cursor = conn.cursor()
-        query = "INSERT INTO test (column1) VALUES (%s)"
-        print(data)
-        for row in data:
-            if len(row) == 2:
-                values = (row[1],)
-                logging.info("Inserting values: %s", values)
-                cursor.execute(query, values)
-        
+        cursor.execute("SELECT * FROM test")  # Replace with your actual query
+        rows = cursor.fetchall()
+        logging.info("Fetched data from database: %s", rows)
+        return rows
+    except mysql.connector.Error as err:
+        logging.error("Error fetching data from database: %s", err)
+        raise
+    finally:
+        cursor.close()
+        conn.close()
+
+# Insert data to MySQL database with auto-increment and timestamp
+def insert_data_to_db(row):
+    try:
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        query = "INSERT INTO test (column1, timeOfUpdate) VALUES (%s, %s)"
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute(query, (row[0], timestamp))
         conn.commit()
-        logging.info("Data successfully inserted into the database.")
+        logging.info("Data inserted into database with timestamp.")
     except mysql.connector.Error as err:
         logging.error("Error inserting data into database: %s", err)
         conn.rollback()
@@ -162,14 +87,46 @@ def insert_data_to_db(data):
         if conn.is_connected():
             cursor.close()
             conn.close()
-            logging.info("Database connection closed.")
 
-def main():
+# Insert data into Google Sheets
+def insert_data_to_google_sheets(row):
     try:
-        google_sheets_data = fetch_google_sheets_data()
-        insert_data_to_db(google_sheets_data)
+        client = get_google_sheets_service()
+        sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+        sheet.append_row(row)  # Append new row to Google Sheet
+        logging.info("Data inserted into Google Sheets: %s", row)
     except Exception as e:
-        logging.error("An error occurred during the main process: %s", e)
+        logging.error("Error inserting data into Google Sheets: %s", e)
 
+# Synchronize data between Google Sheets and database
+def synchronize_data():
+    try:
+        # Fetch data from both sources
+        google_sheets_data = fetch_google_sheets_data()
+        db_data = fetch_database_data()
+
+        # Convert data to sets for easier comparison
+        google_sheets_set = {tuple(row) for row in google_sheets_data}
+        print()
+        print(google_sheets_data)
+        db_set = {tuple(row[:1]) for row in db_data}  # Assuming you only want the first column to compare
+
+        # Find missing data
+        missing_in_db = google_sheets_set - db_set
+        missing_in_sheet = db_set - google_sheets_set
+
+        # Insert missing data into the database
+        for row in missing_in_db:
+            logging.info("Inserting into DB: %s", row)
+            insert_data_to_db(row)
+
+        # Insert missing data into Google Sheets
+        for row in missing_in_sheet:
+            logging.info("Inserting into Google Sheets: %s", row)
+            insert_data_to_google_sheets(list(row))
+    except Exception as e:
+        logging.error("Error during synchronization: %s", e)
+
+# Main synchronization process
 if __name__ == "__main__":
-    main()
+    synchronize_data()
