@@ -4,129 +4,137 @@ import mysql.connector
 import logging
 from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
+import time
 from datetime import datetime
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Google Sheets credentials
-SERVICE_ACCOUNT_FILE = 'superjoin-435614-8fddc078511b.json'
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
-
-# Database credentials
-DB_USER = os.getenv('DB_USER')
-DB_PASSWORD = os.getenv('DB_PASSWORD')
-
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
-# Google Sheets client setup
-def get_google_sheets_service():
-    credentials = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-    client = gspread.authorize(credentials)
-    return client
+# Google Sheets and MySQL configuration
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+SERVICE_ACCOUNT_FILE = 'superjoin-435614-8fddc078511b.json'
+SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
+
+# Initialize credentials
+credentials = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+client = gspread.authorize(credentials)
+
+# Database connection
+def connect_to_database():
+    conn = mysql.connector.connect(
+        host="localhost",
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'),
+        database="superjoin"
+    )
+    return conn
 
 # Fetch data from Google Sheets
 def fetch_google_sheets_data():
-    try:
-        client = get_google_sheets_service()
-        sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-        data = sheet.get_all_values()  # Get all values from the sheet
-        logging.info("Fetched data from Google Sheets: %s", data)
-        return data
-    except Exception as e:
-        logging.error("Error fetching data from Google Sheets: %s", e)
-        raise
-
-# Connect to MySQL database
-def connect_to_database():
-    try:
-        conn = mysql.connector.connect(
-            host="localhost",
-            user=DB_USER,
-            password=DB_PASSWORD,
-            database="superjoin"
-        )
-        logging.info("Successfully connected to the database.")
-        return conn
-    except mysql.connector.Error as err:
-        logging.error("Error connecting to the database: %s", err)
-        raise
+    sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+    return sheet.get_all_values()
 
 # Fetch data from the database
-def fetch_database_data():
-    try:
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM test")  # Replace with your actual query
-        rows = cursor.fetchall()
-        logging.info("Fetched data from database: %s", rows)
-        return rows
-    except mysql.connector.Error as err:
-        logging.error("Error fetching data from database: %s", err)
-        raise
-    finally:
-        cursor.close()
-        conn.close()
+def fetch_db_data():
+    conn = connect_to_database()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM test")
+    data = cursor.fetchall()
+    conn.close()
+    return data
 
-# Insert data to MySQL database with auto-increment and timestamp
-def insert_data_to_db(row):
-    try:
-        conn = connect_to_database()
-        cursor = conn.cursor()
-        query = "INSERT INTO test (column1, timeOfUpdate) VALUES (%s, %s)"
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        cursor.execute(query, (row[0], timestamp))
-        conn.commit()
-        logging.info("Data inserted into database with timestamp.")
-    except mysql.connector.Error as err:
-        logging.error("Error inserting data into database: %s", err)
-        conn.rollback()
-    finally:
-        if conn.is_connected():
-            cursor.close()
-            conn.close()
+# Insert into database
+def insert_to_database(column1):
+    conn = connect_to_database()
+    cursor = conn.cursor()
+    query = "INSERT INTO test (column1, timeOfUpdate) VALUES (%s, %s)"
+    timestamp = datetime.now()
+    cursor.execute(query, (column1, timestamp))
+    conn.commit()
+    row_id = cursor.lastrowid  # Get the auto-incremented ID
+    conn.close()
+    return row_id
 
-# Insert data into Google Sheets
-def insert_data_to_google_sheets(row):
-    try:
-        client = get_google_sheets_service()
-        sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-        sheet.append_row(row)  # Append new row to Google Sheet
-        logging.info("Data inserted into Google Sheets: %s", row)
-    except Exception as e:
-        logging.error("Error inserting data into Google Sheets: %s", e)
+# Delete from database
+def delete_from_database(row_id):
+    conn = connect_to_database()
+    cursor = conn.cursor()
+    query = "DELETE FROM test WHERE Id = %s"
+    cursor.execute(query, (row_id,))
+    conn.commit()
+    conn.close()
 
-# Synchronize data between Google Sheets and database
-def synchronize_data():
-    try:
-        # Fetch data from both sources
-        google_sheets_data = fetch_google_sheets_data()
-        db_data = fetch_database_data()
+# Insert into Google Sheets
+def insert_to_google_sheets(row):
+    sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+    formatted_row = [str(item) if isinstance(item, datetime) else item for item in row]
+    sheet.append_row(formatted_row)
 
-        # Convert data to sets for easier comparison
-        google_sheets_set = {tuple(row) for row in google_sheets_data}
-        print()
-        print(google_sheets_data)
-        db_set = {tuple(row[:1]) for row in db_data}  # Assuming you only want the first column to compare
+# Delete from Google Sheets
+def delete_from_google_sheets(row_index):
+    sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+    sheet.delete_row(row_index)
 
-        # Find missing data
-        missing_in_db = google_sheets_set - db_set
-        missing_in_sheet = db_set - google_sheets_set
+# Sync logic
+def sync_sheets_and_db(prev_sheet_data, prev_db_data):
+    current_sheet_data = fetch_google_sheets_data()
+    current_db_data = fetch_db_data()
 
-        # Insert missing data into the database
-        for row in missing_in_db:
-            logging.info("Inserting into DB: %s", row)
-            insert_data_to_db(row)
+    # Detect and sync changes from Google Sheets to DB
+    for row in current_sheet_data:
+        if row not in prev_sheet_data:  # New row detected in Sheets
+            column1 = row[2]
+            row_id = insert_to_database(column1)
+            logging.info(f"New row in Google Sheets detected: {row}. Inserted into DB with ID {row_id}")
+            # Update the Google Sheet with the new ID and timestamp
+            sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+            cell = sheet.find(column1)  # Find the row with the new column1 value
+            if cell:
+                row_number = cell.row
+                sheet.update_cell(row_number, 3, row_id)  # Update the ID column
 
-        # Insert missing data into Google Sheets
-        for row in missing_in_sheet:
-            logging.info("Inserting into Google Sheets: %s", row)
-            insert_data_to_google_sheets(list(row))
-    except Exception as e:
-        logging.error("Error during synchronization: %s", e)
+    for prev_row in prev_sheet_data:
+        if prev_row not in current_sheet_data:  # Row deleted from Sheets
+            row_id = prev_row[2]  # Assuming ID is in column 3
+            delete_from_database(row_id)
+            logging.info(f"Row deleted from Google Sheets: {prev_row}. Deleted from DB")
 
-# Main synchronization process
+    # Detect and sync changes from DB to Google Sheets
+    for row in current_db_data:
+        if row not in prev_db_data:  # New row detected in DB
+            column1 = row[1]
+            timestamp = row[2]
+            row_to_add = [column1, timestamp, row[0]]  # ID is the first element
+            insert_to_google_sheets(row_to_add)
+            logging.info(f"New row in DB detected: {row}. Added to Google Sheets")
+
+    for prev_row in prev_db_data:
+        if prev_row not in current_db_data:  # Row deleted from DB
+            row_id = prev_row[0]
+            sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+            cell = sheet.find(str(row_id))  # Find the row with the ID
+            if cell:
+                row_number = cell.row
+                delete_from_google_sheets(row_number)
+                logging.info(f"Row deleted from DB: {prev_row}. Deleted from Google Sheets")
+
+# Main sync loop
+def sync_loop():
+    prev_sheet_data = fetch_google_sheets_data()
+    prev_db_data = fetch_db_data()
+
+    while True:
+        sync_sheets_and_db(prev_sheet_data, prev_db_data)
+
+        # Update the previous state
+        prev_sheet_data = fetch_google_sheets_data()
+        prev_db_data = fetch_db_data()
+
+        time.sleep(10)  # Check for changes every 10 seconds
+
 if __name__ == "__main__":
-    synchronize_data()
+    logging.info("Starting sync loop")
+    sync_loop()
