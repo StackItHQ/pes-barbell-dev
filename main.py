@@ -83,10 +83,21 @@ def delete_from_google_sheets(row_index):
 def sync_sheets_and_db(prev_sheet_data, prev_db_data):
     current_sheet_data = fetch_google_sheets_data()
     current_db_data = fetch_db_data()
-
+    print(prev_sheet_data)
+    print(current_sheet_data)
     # Detect and sync changes from Google Sheets to DB
+    sheetChange = 0
+    dbChange = 0
+    cnt = 0
     for row in current_sheet_data:
+        print((row))
         if row not in prev_sheet_data:  # New row detected in Sheets
+            if(row==[]):
+                print("here")
+                delete_from_database(current_db_data[0][1])
+                dbChange = 1
+                break
+            
             column1 = row[0]
             row_id = insert_to_database(column1)
             logging.info(f"New row in Google Sheets detected: {row}. Inserted into DB with ID {row_id}")
@@ -96,12 +107,15 @@ def sync_sheets_and_db(prev_sheet_data, prev_db_data):
             if cell:
                 row_number = cell.row
                 sheet.update_cell(row_number, 2, row_id)  # Update the ID column
-
-    for prev_row in prev_sheet_data:
-        if prev_row not in current_sheet_data:  # Row deleted from Sheets
-            row_id = prev_row[1]  # Assuming ID is in column 2
-            delete_from_database(row_id)
-            logging.info(f"Row deleted from Google Sheets: {prev_row}. Deleted from DB")
+                dbChange = 1
+                cnt+=1
+    if(dbChange==0):
+        
+        for prev_row in prev_sheet_data:
+            if prev_row not in current_sheet_data:  # Row deleted from Sheets
+                row_id = prev_row[1]  # Assuming ID is in column 2
+                delete_from_database(row_id)
+                logging.info(f"Row deleted from Google Sheets: {prev_row}. Deleted from DB")
 
     # Detect and sync changes from DB to Google Sheets
     for row in current_db_data:
@@ -111,16 +125,18 @@ def sync_sheets_and_db(prev_sheet_data, prev_db_data):
             row_to_add = [column1, row_id]
             insert_to_google_sheets(column1, row_id)
             logging.info(f"New row in DB detected: {row}. Added to Google Sheets")
+            sheetChange = 1
+    if(sheetChange==1):
 
-    for prev_row in prev_db_data:
-        if prev_row not in current_db_data:  # Row deleted from DB
-            row_id = prev_row[0]
-            sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-            cell = sheet.find(str(row_id))  # Find the row with the ID
-            if cell:
-                row_number = cell.row
-                delete_from_google_sheets(row_number)
-                logging.info(f"Row deleted from DB: {prev_row}. Deleted from Google Sheets")
+        for prev_row in prev_db_data:
+            if prev_row not in current_db_data:  # Row deleted from DB
+                row_id = prev_row[1]
+                sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+                cell = sheet.find(str(row_id))  # Find the row with the ID
+                if cell:
+                    row_number = cell.row
+                    delete_from_google_sheets(row_number)
+                    logging.info(f"Row deleted from DB: {prev_row}. Deleted from Google Sheets")
 
 # Main sync loop
 def sync_loop():
