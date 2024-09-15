@@ -100,12 +100,13 @@ def sync_sheets_and_db(prev_sheet_data, prev_db_data):
             dbChange = True
 
     # Handle deletions from Google Sheets
-    for prev_row in prev_sheet_data:
-        if prev_row not in current_sheet_data:  # Row deleted from Sheets
-            row_id = prev_row[1]  # Assuming ID is in column 2
-            delete_from_database(row_id)  # Delete corresponding row from DB
-            logging.info(f"Row deleted from Google Sheets: {prev_row}. Deleted from DB")
-    
+    if(dbChange==0):
+        for prev_row in prev_sheet_data:
+            if prev_row not in current_sheet_data:  # Row deleted from Sheets
+                row_id = prev_row[1]  # Assuming ID is in column 2
+                delete_from_database(row_id)  # Delete corresponding row from DB
+                logging.info(f"Row deleted from Google Sheets: {prev_row}. Deleted from DB")
+        
     # Detect and sync changes from DB to Google Sheets
     sheetChange = False
     for row in current_db_data:
