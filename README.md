@@ -81,7 +81,9 @@ https://github.com/user-attachments/assets/a9bbf586-b932-480f-b399-cc533ebfc7d0
 
 ### My approach : 
 i)I created a project in google cloud platform and emabled OAuth , Google Sheets API and Google Drive API. 
+
 ii)After that , I downloaded the client_secrets.json to uniquely verify myself. 
+
 iii)The algorithm that I followed before getting the program ready is as follows : 
 
 a)Maintain two variables each for the spreadsheet and database . 
