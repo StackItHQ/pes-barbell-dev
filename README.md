@@ -104,8 +104,13 @@ This is a rough approach I followed. The video contains the demonstration of my 
 #### PS: I forgot to mention what was the most challenging part I faced since there was a time constraint of 2 minutes and I had to shorted my explanation. The most challenging part of the assignment was the updation part. I felt that the deletion and addition of records is fairly straight forward but I had to come up with the logic of updation by myself because GPT/Claude aren't that smart yet to solve the bugs I faced :) . The code for the updation logic is in the main.py(line 112 to 123) and the entire updateFunctionality.py file. 
 
 iv) That is the crux of the algorithm I used. I created a .env file to store the environment variables such as client secrets , spreadsheet ID(This, I obtained from the URL of the spreadsheet) ,the credentials of the instance of MySQL database in my local machine. 
+
 v)I used the os library to import the required environment variables. 
+
 vi)The list of libraries I used are : 
+
   logging(to log data into my console) , mysql.connector (to make a connection between the MySQL database and my python program) , gspread(to establish a connection between my python program and the google spreadsheet , os(to read the environment variables) and dotenv(to load the environment variables from the .env file to the python program). 
+  
 vii)I was not able to solve all the edge cases as figuring out why the error occured and the solution for the updation part of the solution took almost 8 hours to me. But eitherways , I am happy I learnt a lot. 
+
 Thank you for this opportunity ! 
