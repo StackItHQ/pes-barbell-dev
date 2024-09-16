@@ -58,10 +58,10 @@ Once you're done, make sure you **record a video** showing your project working.
 We have a checklist at the bottom of this README file, which you should update as your progress with your assignment. It will help us evaluate your project.
 
 - [x] My code's working just fine! 🥳
-- [ ] I have recorded a video showing it working and embedded it in the README ▶️
+- [X] I have recorded a video showing it working and embedded it in the README ▶️
 - [x] I have tested all the normal working cases 😎
 - [ ] I have even solved some edge cases (brownie points) 💪
-- [ ] I added my very planned-out approach to the problem at the end of this README 📜
+- [X] I added my very planned-out approach to the problem at the end of this README 📜
 
 ## Got Questions❓
 
@@ -84,9 +84,9 @@ i)I created a project in google cloud platform and emabled OAuth , Google Sheets
 ii)After that , I downloaded the client_secrets.json to uniquely verify myself. 
 iii)The algorithm that I followed before getting the program ready is as follows : 
     a)Maintain two variables each for the spreadsheet and database . 
-    b)If current_db_data == previous_db_data but current_sheet_data is not equal to previous_sheet_data:
-            then a deletion or addition has occured in the sheet , and the change (either deletion or addition) has to be replicated in the DB as well. (I had been doing it synchronously , but I feel asynchronous 
-             updation is the best approach. I used synchronous method because that was more easy to debug). 
+    b)If current_db_data == previous_db_data but current_sheet_data is not equal to previous_sheet_data: 
+    then a deletion or addition has occured in the sheet , and the change (either deletion or addition) has to be replicated in the DB as well. (I had been doing it synchronously , but I feel 
+    asynchronous updation is the best approach. I used synchronous method because that was more easy to debug). 
     c)If (current_db_data!=previous_db_data but current_sheet_data is equal to previous_sheet_data): 
           Change has occured in DB and it has to be replicated in the sheet. 
     d) Make the change and return from the function. 
