@@ -83,8 +83,9 @@ https://github.com/user-attachments/assets/a9bbf586-b932-480f-b399-cc533ebfc7d0
 i)I created a project in google cloud platform and emabled OAuth , Google Sheets API and Google Drive API. 
 ii)After that , I downloaded the client_secrets.json to uniquely verify myself. 
 iii)The algorithm that I followed before getting the program ready is as follows : 
-    a)Maintain two variables each for the spreadsheet and database . 
-    b)If current_db_data == previous_db_data but current_sheet_data is not equal to previous_sheet_data: 
+
+a)Maintain two variables each for the spreadsheet and database . 
+b)If current_db_data == previous_db_data but current_sheet_data is not equal to previous_sheet_data: 
     then a deletion or addition has occured in the sheet , and the change (either deletion or addition) has to be replicated in the DB as well. (I had been doing it synchronously , but I feel 
     asynchronous updation is the best approach. I used synchronous method because that was more easy to debug). 
     c)If (current_db_data!=previous_db_data but current_sheet_data is equal to previous_sheet_data): 
