@@ -92,6 +92,7 @@ def sync_sheets_and_db(prev_sheet_data, prev_db_data):
     
     # Detect and sync insertions and updates from Google Sheets to DB
     for row in current_sheet_data:
+        print(row)
         if row and row[0].strip():
             column1 = row[0].strip()
             row_id = row[1] if len(row) > 1 else None #gotta check for len(row) = 1 , that is only row[0] is filled or row[1] is filled.
