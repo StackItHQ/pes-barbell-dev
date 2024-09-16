@@ -75,4 +75,28 @@ All the best ✨.
 
 _Add your video here, and your approach to the problem (optional). Leave some comments for us here if you want, we will be reading this :)_
 
-### My approach :
+### Working of the project :  
+
+https://github.com/user-attachments/assets/a9bbf586-b932-480f-b399-cc533ebfc7d0  
+
+### My approach : 
+i)I created a project in google cloud platform and emabled OAuth , Google Sheets API and Google Drive API. 
+ii)After that , I downloaded the client_secrets.json to uniquely verify myself. 
+iii)The algorithm that I followed before getting the program ready is as follows : 
+    a)Maintain two variables each for the spreadsheet and database . 
+    b)If current_db_data == previous_db_data but current_sheet_data is not equal to previous_sheet_data:
+            then a deletion or addition has occured in the sheet , and the change (either deletion or addition) has to be replicated in the DB as well. (I had been doing it synchronously , but I feel asynchronous 
+             updation is the best approach. I used synchronous method because that was more easy to debug). 
+    c)If (current_db_data!=previous_db_data but current_sheet_data is equal to previous_sheet_data): 
+          Change has occured in DB and it has to be replicated in the sheet. 
+    d) Make the change and return from the function. 
+    e) Run the main.py script again to listen for changes. 
+This is a rough approach I followed. The video contains the demonstration of my project. 
+#### PS: I forgot to mention what was the most challenging part I faced since there was a time constraint of 2 minutes and I had to shorted my explanation. The most challenging part of the assignment was the updation part. I felt that the deletion and addition of records is fairly straight forward but I had to come up with the logic of updation by myself because GPT/Claude aren't that smart yet to solve the bugs I faced :) . The code for the updation logic is in the main.py(line 112 to 123) and the entire updateFunctionality.py file. 
+
+iv) That is the crux of the algorithm I used. I created a .env file to store the environment variables such as client secrets , spreadsheet ID(This, I obtained from the URL of the spreadsheet) ,the credentials of the instance of MySQL database in my local machine. 
+v)I used the os library to import the required environment variables. 
+vi)The list of libraries I used are : 
+  logging(to log data into my console) , mysql.connector (to make a connection between the MySQL database and my python program) , gspread(to establish a connection between my python program and the google spreadsheet , os(to read the environment variables) and dotenv(to load the environment variables from the .env file to the python program). 
+vii)I was not able to solve all the edge cases as figuring out why the error occured and the solution for the updation part of the solution took almost 8 hours to me. But eitherways , I am happy I learnt a lot. 
+Thank you for this opportunity ! 
