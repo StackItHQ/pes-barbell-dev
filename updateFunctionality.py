@@ -51,8 +51,9 @@ def update_google_sheet_row(row_id, column1):
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
     data = sheet.get_all_values()
     for i, row in enumerate(data):
+        print(i,row)
         if row and len(row) > 1 and str(row[1]) == str(row_id):
-            sheet.update_cell(i + 1, 1, column1)  # Update column1
+            sheet.update_cell(i+1, 1, column1)  # Update column1
             logging.info(f"Updated Google Sheets row {i + 1} with new value: {column1}")
             return True
     return False
